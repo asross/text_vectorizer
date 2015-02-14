@@ -31,6 +31,8 @@ vectorizing text...
 >>> open('/tmp/__text_vectorizer_test_stemmed_vectorized.csv').read().rstrip()
 '0,2|0|3|1,4|7|3|6'
 
+>>> convert_to_labels_with_csr_matrix('/tmp/__text_vectorizer_test_stemmed_vectorized.csv', '/tmp/__text_vectorizer_test_stemmed_bigram_counts.csv')[1].get_shape()
+(1, 4)
 """
 
 import re
@@ -49,6 +51,11 @@ def bigrams(words):
 
 def suffix(csv_filename, ending):
   return csv_filename.replace('.csv', '_'+ending+'.csv')
+
+def file_len(fname):
+    with open(fname) as f:
+        for i, l in enumerate(f): pass
+    return i + 1
 
 def vectorize_text(csv_filename):
   print 'stemming text...'
@@ -120,6 +127,27 @@ def vectorize_bigrams(stemmed_filename, bigram_filename):
         output_csv.writerow([label, '|'.join(feature_vector_data), '|'.join(feature_vector_indices)])
 
   return out_filename
+
+def convert_to_labels_with_csr_matrix(vectorized_filename, bigram_filename):
+  from scipy.sparse import csr_matrix
+  import numpy
+  labels = []
+  matrix_data = []
+  matrix_row_indices = []
+  matrix_col_indices = []
+  total_bigrams = file_len(bigram_filename)
+  with open(vectorized_filename, 'rb') as input_file:
+    i = 0
+    for row in csv.reader(input_file):
+      label, bigram_indices, bigram_counts = row
+      labels.append(label)
+      bigram_indices = map(int, bigram_indices.split('|'))
+      bigram_counts = map(int, bigram_counts.split('|'))
+      matrix_data += bigram_counts
+      matrix_row_indices += [i]*len(bigram_indices)
+      matrix_col_indices += bigram_indices
+      i += 1
+  return labels, csr_matrix((matrix_data,(matrix_row_indices,matrix_col_indices)), shape=(i,total_bigrams), dtype=numpy.float64)
 
 if __name__ == "__main__":
     import doctest
